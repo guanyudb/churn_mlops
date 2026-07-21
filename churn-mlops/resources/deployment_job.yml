@@ -1,0 +1,38 @@
+# MLflow 3 deployment job as code (Gate 2). Evaluation -> Approval_Check -> Deployment.
+# After `bundle deploy`, link it once to the UC model with:
+#   MlflowClient(registry_uri="databricks-uc").update_registered_model(
+#       "${var.catalog}.${var.schema}.${var.model_short_name}", deployment_job_id=<this job id>)
+# Then new model versions park at the UC Approve gate; approving deploys the endpoint.
+resources:
+  jobs:
+    churn_deployment_job:
+      name: "[${bundle.target}] churn-deployment-job"
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      parameters:
+        - name: model_name
+          default: ${var.catalog}.${var.schema}.${var.model_short_name}
+        - name: model_version
+          default: ""
+      tasks:
+        - task_key: Evaluation
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../src/02-mlops-advanced/04a_challenger_validation.py
+        - task_key: Approval_Check
+          depends_on:
+            - task_key: Evaluation
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../src/02-mlops-advanced/04b_challenger_approval.py
+            base_parameters:
+              approval_tag_name: "Approval_Check"
+        - task_key: Deployment
+          depends_on:
+            - task_key: Approval_Check
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../src/02-mlops-advanced/06_serve_features_and_model.py
+            base_parameters:
+              smoke_test: "false"

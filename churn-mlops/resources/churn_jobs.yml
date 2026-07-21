@@ -1,0 +1,30 @@
+# Churn pipeline jobs (serverless). Each task passes stage_db=${var.schema} so the
+# same code targets the stage's schema (00-setup reads the stage_db widget).
+resources:
+  jobs:
+    churn_feature_engineering:
+      name: "[${bundle.target}] churn-feature-engineering"
+      tasks:
+        - task_key: feature_engineering
+          notebook_task:
+            notebook_path: ../src/02-mlops-advanced/01_feature_engineering.py
+            base_parameters:
+              stage_db: ${var.schema}
+
+    churn_training:
+      name: "[${bundle.target}] churn-training"
+      tasks:
+        - task_key: train
+          notebook_task:
+            notebook_path: ../src/02-mlops-advanced/02_model_training_hpo_optuna.py
+            base_parameters:
+              stage_db: ${var.schema}
+
+    churn_batch_inference:
+      name: "[${bundle.target}] churn-batch-inference"
+      tasks:
+        - task_key: batch_score
+          notebook_task:
+            notebook_path: ../src/02-mlops-advanced/05_batch_inference.py
+            base_parameters:
+              stage_db: ${var.schema}

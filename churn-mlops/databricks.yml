@@ -1,0 +1,52 @@
+# =============================================================================
+# Churn MLOps — Databricks Asset Bundle (dbdemos advanced churn, deploy-code)
+# One codebase, three stages by SCHEMA. Code promotes dev -> staging -> prod
+# via Azure DevOps with a human review gate at the staging merge (Gate 1).
+# The prod model additionally requires a UC Approve click before serving (Gate 2).
+# =============================================================================
+bundle:
+  name: churn-mlops
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: UC catalog (Default-Storage sandbox metastore)
+    default: catalog_sbx_0n8q1p
+  schema:
+    description: Per-stage schema (dev/staging/prod isolation)
+    default: dbdemos_mlops
+  model_short_name:
+    default: advanced_mlops_churn
+  service_principal_app_id:
+    description: CI service principal (staging/prod run_as)
+    default: "86f408c2-002c-498f-bb21-0a264a8401e6"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405612181356066.6.azuredatabricks.net
+    variables:
+      schema: dbdemos_mlops
+
+  staging:
+    mode: production
+    workspace:
+      host: https://adb-7405612181356066.6.azuredatabricks.net
+      root_path: /Workspace/Shared/.bundle/churn-mlops/staging
+    variables:
+      schema: dbdemos_mlops_staging
+    # run_as defaults to the deploying identity (the CI service principal when
+    # deployed by the Azure DevOps pipeline; the developer for local deploys).
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-7405612181356066.6.azuredatabricks.net
+      root_path: /Workspace/Shared/.bundle/churn-mlops/prod
+    variables:
+      schema: dbdemos_mlops_prod
+    # run_as defaults to the deploying identity (CI SP via pipeline; dev locally).

@@ -1,0 +1,9 @@
+# Databricks bundle build artifacts
+.databricks/
+**/.databricks/
+*.tfstate
+*.tfstate.backup
+# Python
+__pycache__/
+*.pyc
+.venv/

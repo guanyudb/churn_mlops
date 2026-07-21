@@ -1,0 +1,38 @@
+# =============================================================================
+# churn-ci — PR validation (Gate 1, automated half). Runs on every PR to main.
+# Make this a REQUIRED status check in branch protection; combined with the
+# (narrated) reviewer, that is Gate 1: no unreviewed/unverified code merges.
+#   validate + deploy to staging = "it's deployable before it can merge".
+# =============================================================================
+name: churn-ci
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: churn-mlops
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_TF_VERSION: "1.5.7"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling (Databricks CLI + Terraform 1.5.7)
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          curl -fsSL https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip -o /tmp/tf.zip
+          unzip -oq /tmp/tf.zip -d /tmp/tfbin
+          echo "DATABRICKS_TF_EXEC_PATH=/tmp/tfbin/terraform" >> "$GITHUB_ENV"
+      - name: bundle validate + deploy (staging integration check)
+        run: |
+          set -euo pipefail
+          databricks bundle validate -t staging
+          databricks bundle deploy -t staging

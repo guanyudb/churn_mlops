@@ -1,0 +1,108 @@
+# =============================================================================
+# churn-cd — CD, one multi-job run on push to `main` (i.e. after a PR merges).
+#
+#   deploy-staging : deploy bundle to STAGING + E2E gate (train -> register;
+#                    batch inference best-effort)
+#   promote        : fast-forward `release` to this commit (audit pointer:
+#                    `release` == what prod runs; it is NOT a trigger)
+#   deploy-prod    : deploy bundle to PROD + train -> register Challenger, which
+#                    parks at the Unity Catalog approval gate (Gate 2)
+#
+# Two human gates only: Gate 1 = PR review on main (branch protection: required
+# churn-ci check + review). Gate 2 = Approve the model version in the UC UI.
+# Jobs chain with needs: — the tested commit is exactly the commit deployed to
+# prod (test what you ship).
+#
+# Databricks auth = service principal (Actions secrets). The promote job pushes
+# `release` using GITHUB_TOKEN (needs contents: write). `release` deliberately has
+# NO trigger, so this push does not start another run.
+# =============================================================================
+name: churn-cd
+on:
+  push:
+    branches: [ main ]   # `release` intentionally omitted (audit pointer only)
+
+permissions:
+  contents: write
+
+env:
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+  DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+  DATABRICKS_TF_VERSION: "1.5.7"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  deploy-staging:
+    name: "Staging: deploy + train + register (E2E gate)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: churn-mlops
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling (Databricks CLI + Terraform 1.5.7)
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          curl -fsSL https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip -o /tmp/tf.zip
+          unzip -oq /tmp/tf.zip -d /tmp/tfbin
+          echo "DATABRICKS_TF_EXEC_PATH=/tmp/tfbin/terraform" >> "$GITHUB_ENV"
+      - name: Deploy to staging
+        run: |
+          set -euo pipefail
+          databricks bundle deploy -t staging
+      - name: E2E gate — train + register (batch inference best-effort)
+        run: |
+          set -euo pipefail
+          # The promotion gate: training + model registration must succeed in
+          # staging (against shared prod data) before anything reaches prod.
+          databricks bundle run churn_training -t staging
+          databricks bundle run churn_batch_inference -t staging \
+            || echo "::warning::staging batch inference failed (non-fatal)"
+
+  # ---------------------------------------------------------------------------
+  promote:
+    name: "Promote: fast-forward release (audit pointer)"
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+      - name: Fast-forward release to this commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # `release` records what prod runs. Move it to the commit that just
+          # passed the staging gate. --ff-only keeps release a clean ancestor line.
+          git push origin "HEAD:refs/heads/release"
+          echo "release fast-forwarded to ${GITHUB_SHA}"
+
+  # ---------------------------------------------------------------------------
+  deploy-prod:
+    name: "Prod: deploy + train -> Challenger (parks at Gate 2)"
+    needs: promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: churn-mlops
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling (Databricks CLI + Terraform 1.5.7)
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          curl -fsSL https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip -o /tmp/tf.zip
+          unzip -oq /tmp/tf.zip -d /tmp/tfbin
+          echo "DATABRICKS_TF_EXEC_PATH=/tmp/tfbin/terraform" >> "$GITHUB_ENV"
+      - name: Deploy to prod + train -> register Challenger
+        run: |
+          set -euo pipefail
+          # Same commit that passed the staging gate (test what you ship).
+          databricks bundle deploy -t prod
+          databricks bundle run churn_training -t prod
+          echo "New prod Challenger registered — parks at the UC approval gate."
+          echo "Approve it in the model UI (Gate 2) to promote @Champion and roll the endpoint."
