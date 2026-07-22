@@ -13,7 +13,7 @@ include:
 variables:
   catalog:
     description: UC catalog (Default-Storage sandbox metastore)
-    default: catalog_sbx_0n8q1p
+    default: catalog_sbx2_4710ry
   schema:
     description: Per-stage schema (dev/staging/prod isolation)
     default: dbdemos_mlops
@@ -21,21 +21,21 @@ variables:
     default: advanced_mlops_churn
   service_principal_app_id:
     description: CI service principal (staging/prod run_as)
-    default: "86f408c2-002c-498f-bb21-0a264a8401e6"
+    default: "108fa171-a190-454b-a88f-7b076d812314"
 
 targets:
   dev:
     mode: development
     default: true
     workspace:
-      host: https://adb-7405612181356066.6.azuredatabricks.net
+      host: https://adb-7405606147162120.0.azuredatabricks.net
     variables:
       schema: dbdemos_mlops
 
   staging:
     mode: production
     workspace:
-      host: https://adb-7405612181356066.6.azuredatabricks.net
+      host: https://adb-7405606147162120.0.azuredatabricks.net
       root_path: /Workspace/Shared/.bundle/churn-mlops/staging
     variables:
       schema: dbdemos_mlops_staging
@@ -45,7 +45,7 @@ targets:
   prod:
     mode: production
     workspace:
-      host: https://adb-7405612181356066.6.azuredatabricks.net
+      host: https://adb-7405606147162120.0.azuredatabricks.net
       root_path: /Workspace/Shared/.bundle/churn-mlops/prod
     variables:
       schema: dbdemos_mlops_prod
