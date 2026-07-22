@@ -126,10 +126,16 @@ from mlflow import MlflowClient
 client = MlflowClient(registry_uri="databricks-uc")
 
 # The main model description, typically done once.
-client.update_registered_model(
-  name=model_details.name,
-  description="This model predicts whether a customer will churn using the features in the mlops_churn_training table. It is used to power the Telco Churn Dashboard in DB SQL.",
-)
+# Patch (7): the CI service principal can create model versions but is NOT the
+# model owner, so these metadata/alias updates may 403. Log + continue — 04a
+# still sets @Challenger and the version is registered regardless.
+try:
+  client.update_registered_model(
+    name=model_details.name,
+    description="This model predicts whether a customer will churn using the features in the mlops_churn_training table. It is used to power the Telco Churn Dashboard in DB SQL.",
+  )
+except Exception as _e:
+  print(f"[patch7] update_registered_model skipped (non-owner CI SP): {_e}")
 
 # COMMAND ----------
 
@@ -143,11 +149,14 @@ best_score = best_model['metrics.test_f1_score'].values[0]
 run_name = best_model['tags.mlflow.runName'].values[0]
 version_desc = f"This model version has an F1 validation metric of {round(best_score,4)*100}%. Follow the link to its training run for more details."
 
-client.update_model_version(
-  name=model_details.name,
-  version=model_details.version,
-  description=version_desc
-)
+try:
+  client.update_model_version(
+    name=model_details.name,
+    version=model_details.version,
+    description=version_desc
+  )
+except Exception as _e:
+  print(f"[patch7] update_model_version skipped (non-owner CI SP): {_e}")
 
 # COMMAND ----------
 
@@ -161,11 +170,14 @@ client.update_model_version(
 # COMMAND ----------
 
 # Set this version as the Challenger model, using its model alias
-client.set_registered_model_alias(
-  name=f"{catalog}.{db}.advanced_mlops_churn",
-  alias="Challenger",
-  version=model_details.version
-)
+try:
+  client.set_registered_model_alias(
+    name=f"{catalog}.{db}.advanced_mlops_churn",
+    alias="Challenger",
+    version=model_details.version
+  )
+except Exception as _e:
+  print(f"[patch7] set_registered_model_alias(Challenger) skipped (non-owner CI SP): {_e}")
 
 # COMMAND ----------
 

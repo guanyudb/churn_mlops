@@ -4,6 +4,8 @@ resources:
   jobs:
     churn_feature_engineering:
       name: "[${bundle.target}] churn-feature-engineering"
+      tags:
+        demo_cycle: "clean-room-rebuild-v1"
       tasks:
         - task_key: feature_engineering
           notebook_task:
@@ -17,6 +19,16 @@ resources:
         - task_key: train
           notebook_task:
             notebook_path: ../src/02-mlops-advanced/02_model_training_hpo_optuna.py
+            base_parameters:
+              stage_db: ${var.schema}
+        # Register the best run to Unity Catalog as a new @Challenger version.
+        # (02 only logs to MLflow tracking; 03b is what creates the UC model
+        # version — which is what triggers the linked deployment job / Gate 2.)
+        - task_key: register
+          depends_on:
+            - task_key: train
+          notebook_task:
+            notebook_path: ../src/02-mlops-advanced/03b_from_notebook_to_models_in_uc.py
             base_parameters:
               stage_db: ${var.schema}
 

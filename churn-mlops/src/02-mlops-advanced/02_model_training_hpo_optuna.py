@@ -57,8 +57,9 @@ display(spark.table(f"{catalog}.{data_source_schema}.advanced_churn_feature_tabl
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC DESCRIBE FUNCTION catalog_sbx_0n8q1p.dbdemos_mlops_prod.avg_price_increase
+# Uses the stage-resolved catalog/data_source_schema vars (not a hardcoded catalog)
+# so it follows the workspace the bundle points at.
+display(spark.sql(f"DESCRIBE FUNCTION {catalog}.{data_source_schema}.avg_price_increase"))
 
 # COMMAND ----------
 
