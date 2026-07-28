@@ -68,20 +68,36 @@ DATABRICKS_CLIENT_ID       = <SP application/client id>
 DATABRICKS_CLIENT_SECRET   = <SP OAuth secret>
 ```
 
-### 3. Branch protection on `main` = Gate 1
+### 3. Repo Actions permission (REQUIRED — `auto-pr` fails without it)
+Settings → Actions → General → **Workflow permissions**:
+- ✅ **Read and write permissions**
+- ✅ **Allow GitHub Actions to create and approve pull requests**
+
+Without this, `auto-pr` errors `GitHub Actions is not permitted to create or approve pull requests`.
+It's a **repo setting — not a secret, not branch protection** — so it's easy to miss. Via API:
+```bash
+gh api -X PUT repos/<OWNER>/<REPO>/actions/permissions/workflow \
+  -F default_workflow_permissions=write -F can_approve_pull_request_reviews=true
+```
+> A PR opened *by the auto-pr bot* may have its first `churn-ci` run land in **`action_required`** —
+> approve it once in the PR's Checks tab (GitHub's first-run gate for bot-authored PRs).
+
+### 4. Branch protection on `main` = Gate 1
 Settings → Branches → add rule for `main`:
 - ✅ **Require a pull request before merging** (+ *Require approvals: 1* — narrated for a solo demo;
   see note)
-- ✅ **Require status checks to pass** → select **`churn-ci`** (the hard, automated gate)
+- ✅ **Require status checks to pass** → select the **`validate`** check. *(The required-check
+  context is the **job** name `validate`, not the workflow name `churn-ci`.)*
 - Create branches **`main`** (protected trunk) and **`release`** (prod audit pointer — no protection,
   no workflow trigger).
 
 > **Solo-presenter note:** github.com has **no "allow self-approval"** — an author can't approve their
-> own PR. For a one-person demo, rely on the **required `churn-ci` check** as the enforced gate and
-> **narrate** the review/approval (what a team adds). To enforce approval for real, add a second
-> reviewer identity. (This differs from Azure DevOps, which *does* allow self-approval.)
+> own PR. For a one-person demo, rely on the **required `validate` check** as the enforced gate and
+> **narrate** the review/approval (what a team adds), or merge via **admin** (`gh pr merge --admin`,
+> works only with `enforce_admins=false`). To enforce approval for real, add a second reviewer
+> identity. (This differs from Azure DevOps, which *does* allow self-approval.)
 
-### 4. Databricks side (see the full playbook)
+### 5. Databricks side (see the full playbook)
 Provision workspace → create the 3 schemas → apply notebook patches (already in this repo) →
 `bundle deploy` per target → **the CI service-principal permission chain** → link the deployment job
 to the UC model (Gate 2). The complete, ordered steps + the permission chain + every known issue are
