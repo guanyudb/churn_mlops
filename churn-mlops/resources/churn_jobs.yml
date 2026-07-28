@@ -5,7 +5,7 @@ resources:
     churn_feature_engineering:
       name: "[${bundle.target}] churn-feature-engineering"
       tags:
-        demo_cycle: "clean-room-rebuild-v1"
+        demo_cycle: "verify-live-2026-07-28"
       tasks:
         - task_key: feature_engineering
           notebook_task:
