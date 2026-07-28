@@ -85,8 +85,10 @@ is_smoke_test = dbutils.widgets.get("smoke_test").lower() == "true"
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC ALTER TABLE advanced_churn_feature_table SET TBLPROPERTIES (delta.enableChangeDataFeed = true)
+# Fully-qualify the feature table (it lives in the prod/data-source schema);
+# an unqualified name resolves against the current schema and 404s when the
+# deployment job runs against a different stage schema.
+spark.sql(f"ALTER TABLE {catalog}.{db}.advanced_churn_feature_table SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
 
 # COMMAND ----------
 
