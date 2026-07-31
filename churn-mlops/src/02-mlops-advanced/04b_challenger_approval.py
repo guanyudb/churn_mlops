@@ -76,6 +76,15 @@ else:
       version=model_version
     )
 
+    # This version is now Champion, so it is no longer a "Challenger" candidate.
+    # Drop the @Challenger alias so the promoted version shows @Champion only.
+    # (@Challenger reappears next cycle when a new candidate is registered.)
+    try:
+      client.delete_registered_model_alias(name=model_name, alias="Challenger")
+      print("Removed @Challenger alias (now Champion).")
+    except Exception as e:
+      print(f"(no @Challenger alias to remove: {e})")
+
   else:
     raise Exception("Model version not approved for deployment")
 

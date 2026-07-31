@@ -551,23 +551,22 @@ def optuna_hpo_fn(n_trials: int, X_train: pd.DataFrame, Y_train: pd.Series, X_te
         pyfunc.add_to_model(mlflow_model, loader_module="mlflow.sklearn")
         pyfunc_model = PyFuncModel(model_meta=mlflow_model, model_impl=model_pipeline)
 
-        # Log metrics for the training set
-        training_eval_result = mlflow.evaluate(
-            model=pyfunc_model,
-            data=X_train.assign(**{str(label_col):Y_train}),
-            targets=label_col,
-            model_type="classifier",
-            evaluator_config = {"log_model_explainability": False,
-                                "metric_prefix": "training_" , "pos_label": pos_label_in }
-        )
-
-        # Log metrics for the test set
+        # Log metrics for the test set only.
+        # NOTE (metric-quota fix): we deliberately (a) drop the redundant `training_`
+        # mlflow.evaluate and (b) set log_model_explainability=False. Each mlflow.evaluate
+        # writes its metrics onto the logged-model object, and SHAP explainability adds a
+        # large batch of per-feature metrics. Across many pipeline runs these accumulate
+        # on the same registered-model lineage until MLflow's hard cap
+        # ("exceeded maximum allowed number of logged model metrics per logged model: 1000")
+        # fails training — prod (more history) tips over before staging. Test-set metrics
+        # are what the champion/challenger decision uses, so the training-set pass and the
+        # explainability metrics are not needed for the demo gate.
         test_eval_result = mlflow.evaluate(
             model=pyfunc_model,
             data=X_test.assign(**{str(label_col):Y_test}),
             targets=label_col,
             model_type="classifier",
-            evaluator_config = {"log_model_explainability": True,
+            evaluator_config = {"log_model_explainability": False,
                                 "metric_prefix": "test_" , "pos_label": pos_label_in }
         )
 
