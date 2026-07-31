@@ -1,8 +1,9 @@
 # =============================================================================
-# churn-ci — PR validation (Gate 1, automated half). Runs on every PR to main.
-# Make this a REQUIRED status check in branch protection; combined with the
-# (narrated) reviewer, that is Gate 1: no unreviewed/unverified code merges.
-#   validate + deploy to staging = "it's deployable before it can merge".
+# churn-ci — pull-request validation. Runs on every PR into `main`.
+# Validates the bundle and deploys it to staging, proving the change is
+# deployable before it can merge. Set this as a required status check in branch
+# protection so, together with a reviewer's approval, it forms Gate 1 (code
+# review): no unreviewed or unverified change reaches main.
 # =============================================================================
 name: churn-ci
 on:
