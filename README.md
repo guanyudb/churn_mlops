@@ -106,6 +106,49 @@ layer).
 
 ---
 
+## CI/CD
+
+The repo ships **three workflows** under `.github/workflows/`; each installs the Databricks CLI +
+Terraform 1.5.7 and authenticates as the CI service principal (M2M OAuth from the repo's Actions
+secrets). Together they implement the two-gate flow — **push a `feature/**` branch, and the only
+human steps left are Merge (Gate 1) and Approve the model (Gate 2).**
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `auto-pr.yml` | Push to `feature/**` | Opens a PR from the feature branch into `main` (skips if one is already open), so the dev's only manual step is Merge. Uses `GITHUB_TOKEN`. |
+| `churn-ci.yml` | PR opened/synced against `main` | **Gate 1 (automated half).** The `validate` job runs `databricks bundle validate -t staging` + `bundle deploy -t staging` — proves the code is deployable before it can merge. This is the **required status check** in branch protection; combined with the reviewer/Merge, no unverified code reaches `main`. |
+| `churn-cd.yml` | Push to `main` (i.e. a PR merged) | One chained multi-job run: **`deploy-staging`** (`bundle deploy -t staging` → `bundle run churn_training` = train **and register** a model; batch inference best-effort = the E2E gate) → **`promote`** (fast-forward `release` to this commit — `release` is an audit pointer of what prod runs, deliberately **not** a trigger) → **`deploy-prod`** (`bundle deploy -t prod` → `bundle run churn_training` registers a NEW prod version, which auto-triggers the deployment job and **parks at the UC approval gate**). |
+
+**Where the gates live:**
+- **Gate 1 — the PR page** (`.../pulls`): merge to `main` is blocked by branch protection until the
+  `churn-ci` **`validate`** check is green **and** a reviewer approves. The *automated* half is
+  churn-ci; the *human* half is the review + Merge.
+- **Gate 2 — the UC model UI:** `churn-cd`'s prod job registers a new version that parks at
+  "Approval needed"; the deployment job's `Approval_Check` task raises until a human clicks
+  **Approve** (sets tag `Approval_Check=Approved`) — only then does `@Champion` flip and the serving
+  endpoint roll.
+
+**A few details worth knowing (say these while CI runs):**
+- **`release` is an audit pointer, not a trigger.** The `promote` job fast-forwards it as a record of
+  "what prod runs"; the prod deploy happens in the *same* churn-cd run (job `deploy-prod`), so there's
+  no second pipeline and no duplicate runs.
+- **Test what you ship.** The commit that passes the staging E2E gate is the exact commit deployed to
+  prod, in one run.
+- **First churn-ci run on a bot-opened PR** may show **"action_required"** — approve the workflow run
+  once in the PR's Checks tab (GitHub gates first runs on PRs opened by a workflow). One-time per PR.
+- **Solo presenter:** github.com has no self-approval; either merge via **admin** (`gh pr merge
+  --admin`, works because `enforce_admins=false`) or add a second reviewer. The required `validate`
+  check is always genuinely enforced.
+
+> **vs. the reference `databricks-solutions/microbricks`** (which ships six workflows incl. per-PR
+> preview environments, path-scoped test matrices, and nightly Lakebase-branch GC): this repo keeps
+> the CI/CD deliberately lean because it's a *model* pipeline, not a fleet of apps. The extra thing it
+> has that microbricks doesn't is the **second human gate at the model** (UC Approve) — MLOps-specific
+> and stronger than a purely tag-triggered prod deploy. Ideas worth borrowing later: per-PR preview
+> schemas, a path-scoped matrix, and a nightly cleanup cron.
+
+---
+
 ## Daily loop (the demo)
 1. In the Databricks **Git folder** for this repo: branch `feature/<x>`, edit (e.g. a hyperparameter
    or a job tag), **Commit & Push**.
