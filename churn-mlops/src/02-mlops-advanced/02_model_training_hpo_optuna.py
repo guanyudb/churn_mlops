@@ -528,8 +528,16 @@ def optuna_hpo_fn(n_trials: int, X_train: pd.DataFrame, Y_train: pd.Series, X_te
     elif classifier_type == "LightGBM":
         best_model = LGBMClassifier(force_row_wise=True, verbose=-1, **best_model_params)
 
-    # Enable automatic logging of input samples, metrics, parameters, and models
-    mlflow.sklearn.autolog(log_input_examples=True, log_models=False, silent=True)
+    # Disable autolog on the final fit. This is the ACTUAL cause of the
+    # "exceeded maximum allowed number of logged model metrics per logged model: 1000"
+    # failure: with LightGBM, mlflow.sklearn.autolog logs a *stepped* training metric per
+    # boosting round, and n_estimators ranges up to 200 (see the search space above), so a
+    # single fit can log 1000+ metrics onto one logged model — it fails even on a brand-new
+    # model, regardless of run history. We don't need autolog here (we log the model
+    # ourselves via fe.log_model and metrics via the single test-set mlflow.evaluate below),
+    # so disable it. `log_post_training_metrics=False` also prevents autolog from hooking
+    # sklearn scorer calls onto the model.
+    mlflow.sklearn.autolog(disable=True)
 
     active_run = mlflow.active_run()
     if not active_run:
