@@ -509,12 +509,19 @@ def optuna_hpo_fn(n_trials: int, X_train: pd.DataFrame, Y_train: pd.Series, X_te
     Increasing `n_jobs` may cause experiment to fail due to failed trials which return None and can't be pruned/caught in parallel mode
     """
 
-    # Kick distributed HPO as nested runs
+    # Kick distributed HPO as nested runs.
+    # Use a UNIQUE study name per run. MlflowSparkStudy stores the study in the shared
+    # experiment-backed MlflowStorage; a fixed name means the second and later pipeline
+    # runs call optuna.load_study on the prior run's study, whose backing MLflow run is
+    # missing the 'optuna.study_direction' tag (directions are set in memory, not
+    # persisted) -> KeyError: 'optuna.study_direction'. A per-run name always creates a
+    # fresh study, so every run initializes cleanly.
+    import time as _time
     objective_fn = ObjectiveOptuna(X_train, Y_train, preprocessor_in, rng_seed_in, pos_label_in)
     mlflow_optuna_study = MlflowSparkStudy(
         pruner=optuna_pruner_in,
         sampler=optuna_sampler_in,
-        study_name=run_name,
+        study_name=f"{run_name}-{int(_time.time())}",
         storage=mlflow_storage,
     )
     mlflow_optuna_study._directions = ["maximize"]
