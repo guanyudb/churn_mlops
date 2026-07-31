@@ -414,17 +414,20 @@ objective_fn = ObjectiveOptuna(X_train, Y_train, preprocessor, pos_label_in=pos_
 # COMMAND ----------
 
 # DBTITLE 1,without mlflow
-study_debug = optuna.create_study(direction="maximize", study_name="test_debug", sampler=optuna_sampler, pruner= NoneValuePruner())
-study_debug.optimize(objective_fn, n_trials=4, n_jobs=-1)
+# NOTE: debug study disabled for job runs — it added trials + metrics without feeding the
+# registered model. Uncomment for interactive exploration only.
+# study_debug = optuna.create_study(direction="maximize", study_name="test_debug", sampler=optuna_sampler, pruner= NoneValuePruner())
+# study_debug.optimize(objective_fn, n_trials=4, n_jobs=-1)
 
 # COMMAND ----------
 
-print("Best trial:")
-best_trial = study_debug.best_trial
-print(f"  F1_score: {best_trial.value}")
-print("  Params: ")
-for key, value in best_trial.params.items():
-    print(f"    {key}: {value}")
+# (debug study disabled — see above; block kept for interactive use)
+# print("Best trial:")
+# best_trial = study_debug.best_trial
+# print(f"  F1_score: {best_trial.value}")
+# print("  Params: ")
+# for key, value in best_trial.params.items():
+#     print(f"    {key}: {value}")
 
 # COMMAND ----------
 
@@ -468,15 +471,17 @@ mlflow_storage = MlflowStorage(experiment_id=experiment_id)
 
 # COMMAND ----------
 
-mlflow_optuna_study_debug = MlflowSparkStudy(
-  pruner= NoneValuePruner(),
-  sampler=optuna_sampler,
-  study_name="mlflow-smoke-test",
-  storage=mlflow_storage,
-)
-mlflow_optuna_study_debug._directions = ["maximize"]
-
-mlflow_optuna_study_debug.optimize(objective_fn, n_trials=8, n_jobs=4)
+# NOTE: smoke-test MlflowSparkStudy disabled for job runs — it logged 8 more trials of
+# metrics into the experiment/run for no downstream use. Uncomment for interactive use.
+# mlflow_optuna_study_debug = MlflowSparkStudy(
+#   pruner= NoneValuePruner(),
+#   sampler=optuna_sampler,
+#   study_name="mlflow-smoke-test",
+#   storage=mlflow_storage,
+# )
+# mlflow_optuna_study_debug._directions = ["maximize"]
+#
+# mlflow_optuna_study_debug.optimize(objective_fn, n_trials=8, n_jobs=4)
 
 
 # COMMAND ----------
@@ -539,18 +544,22 @@ def optuna_hpo_fn(n_trials: int, X_train: pd.DataFrame, Y_train: pd.Series, X_te
     # sklearn scorer calls onto the model.
     mlflow.sklearn.autolog(disable=True)
 
-    active_run = mlflow.active_run()
-    if not active_run:
-        active_run = client.search_runs(
-            experiment_ids=[experiment_id],
-            filter_string=f"tags.mlflow.runName = '{run_name}'",
-            order_by=["start_time DESC"],
-            max_results=1)[0]
-    
-    run_id = active_run.info.run_id
+    # REAL fix for "exceeded maximum allowed number of logged model metrics per logged
+    # model: 1000": do NOT resume the HPO run. MlflowSparkStudy logs every Optuna trial's
+    # metrics into that run, so it already holds hundreds/thousands of metrics — and
+    # fe.log_model() copies ALL of the run's metrics onto the new logged-model object
+    # (Model.log -> log_model_metrics_for_step -> log_batch), which trips the 1000 cap.
+    # Log the final model in a FRESH run instead; only our own test-set mlflow.evaluate
+    # metrics (~a dozen) then land on the logged model. End any active (HPO) run first.
+    # Keep the run NAME identical to `run_name` — 03b selects the model to register with
+    # filter_string run_name='mlops-hpo-best-run' and reads metrics.test_f1_score, so a new
+    # run with the SAME name (names are not unique) keeps 03b working while giving us a
+    # clean run free of the HPO trial metrics.
+    if mlflow.active_run():
+        mlflow.end_run()
 
-    with mlflow.start_run(run_id=run_id, experiment_id=experiment_id) as run:
-        # Fit best model and log using FE client in parent run
+    with mlflow.start_run(run_name=run_name, experiment_id=experiment_id) as run:
+        # Fit best model and log using the FE client in a clean run
         model_pipeline = Pipeline(steps=[("preprocessor", objective_fn.preprocessor), ("classifier", best_model)])
         model_pipeline.fit(X_train, Y_train)
 
