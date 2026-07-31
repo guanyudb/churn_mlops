@@ -85,6 +85,11 @@ jobs:
   deploy-prod:
     name: "Prod: deploy + train -> Challenger (parks at Gate 2)"
     needs: promote
+    # Promotion gate: this job waits for a human to approve the `prod` GitHub
+    # Environment (Settings -> Environments -> prod -> Required reviewers). The
+    # cascade runs staging + promote, then PAUSES here until you click
+    # "Review deployments -> Approve" in the Actions run. Only then does prod deploy.
+    environment: prod
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:
