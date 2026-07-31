@@ -1,21 +1,25 @@
 # =============================================================================
-# churn-cd — CD, one multi-job run on push to `main` (i.e. after a PR merges).
+# churn-cd — continuous delivery. One run on merge to `main`, three stages:
 #
-#   deploy-staging : deploy bundle to STAGING + E2E gate (train -> register;
-#                    batch inference best-effort)
-#   promote        : fast-forward `release` to this commit (audit pointer:
-#                    `release` == what prod runs; it is NOT a trigger)
-#   deploy-prod    : deploy bundle to PROD + train -> register Challenger, which
-#                    parks at the Unity Catalog approval gate (Gate 2)
+#   deploy-staging : deploy to staging, train and register a model
+#                    (the end-to-end check)
+#   promote        : advance the `release` pointer to this commit
+#                    (`release` records what production runs; it is not a trigger)
+#   deploy-prod    : deploy to production, train and register a new production
+#                    model version, which parks for model approval in Unity Catalog
 #
-# Two human gates only: Gate 1 = PR review on main (branch protection: required
-# churn-ci check + review). Gate 2 = Approve the model version in the UC UI.
-# Jobs chain with needs: — the tested commit is exactly the commit deployed to
-# prod (test what you ship).
+# Governance gates:
+#   Gate 1 — code review on the pull request (branch protection: churn-ci check
+#            + reviewer approval), before the merge that starts this pipeline.
+#   Gate 2 — pre-production release: the deploy-prod stage targets a protected
+#            GitHub Environment, so promotion to prod pauses for human approval.
+#   Gate 3 — model approval in Unity Catalog (the parked version is approved by a
+#            data scientist, which promotes it and updates the serving endpoint).
 #
-# Databricks auth = service principal (Actions secrets). The promote job pushes
-# `release` using GITHUB_TOKEN (needs contents: write). `release` deliberately has
-# NO trigger, so this push does not start another run.
+# The commit that passes staging is exactly the commit deployed to prod.
+# Databricks auth is a service principal (Actions secrets). The promote step
+# updates `release` using GITHUB_TOKEN; `release` has no trigger, so it starts
+# no further runs.
 # =============================================================================
 name: churn-cd
 on:
