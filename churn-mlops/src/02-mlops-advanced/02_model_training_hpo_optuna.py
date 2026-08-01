@@ -308,7 +308,7 @@ class ObjectiveOptuna(object):
   a callable class for implementing the objective function. It takes the training dataset by a constructor's argument
   instead of loading it in each trial execution. This will speed up the execution of each trial
   """
-  def __init__(self, X_train_in:pd.DataFrame, Y_train_in:pd.Series, preprocessor_in: ColumnTransformer, rng_seed:int=2026, pos_label_in:str=pos_label):
+  def __init__(self, X_train_in:pd.DataFrame, Y_train_in:pd.Series, preprocessor_in: ColumnTransformer, rng_seed:int=2025, pos_label_in:str=pos_label):
     """
     X_train_in: features
     Y_train_in: label
