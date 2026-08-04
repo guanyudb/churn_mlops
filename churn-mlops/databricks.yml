@@ -27,15 +27,12 @@ targets:
   dev:
     mode: development
     default: true
-    workspace:
-      host: <WORKSPACE_URL>
     variables:
       schema: dbdemos_mlops
 
   staging:
     mode: production
     workspace:
-      host: <WORKSPACE_URL>
       root_path: /Workspace/Shared/.bundle/churn-mlops/staging
     variables:
       schema: dbdemos_mlops_staging
@@ -45,7 +42,6 @@ targets:
   prod:
     mode: production
     workspace:
-      host: <WORKSPACE_URL>
       root_path: /Workspace/Shared/.bundle/churn-mlops/prod
     variables:
       schema: dbdemos_mlops_prod

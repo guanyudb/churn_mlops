@@ -37,9 +37,12 @@ Replace the placeholders in these two files:
 
 | Placeholder | File | Value |
 |---|---|---|
-| `<WORKSPACE_URL>` | `churn-mlops/databricks.yml` (each target) | your workspace URL |
 | `<CATALOG>` | `churn-mlops/databricks.yml` **and** `churn-mlops/src/_resources/00-setup.py` | your catalog |
 | `<CI_SERVICE_PRINCIPAL_APP_ID>` | `churn-mlops/databricks.yml` | the service principal's application id |
+
+**Workspace URL is not in the bundle.** The Databricks CLI resolves it from the environment — the
+`DATABRICKS_HOST` secret in CI, or your CLI profile locally — so you don't hardcode a workspace and
+the project stays portable across environments.
 
 > Also search the notebooks for any fully-qualified table or function references that need your
 > catalog: `grep -rn "<CATALOG>" churn-mlops/src/`
