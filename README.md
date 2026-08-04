@@ -141,8 +141,8 @@ production stage targets this environment, so promotion to prod pauses for that 
 ### 5. Databricks side
 Deploy the bundle to each target, grant the CI service principal access to the catalog/schemas and
 model, and link the MLflow deployment job to the production model (this makes new versions park for
-model approval — Gate 3). Full step-by-step setup, including the exact permission grants, is in
-**`MLOPS_DEMO_PLAYBOOK.md`**.
+model approval — Gate 3). Full step-by-step setup, including the exact permission grants and a
+troubleshooting section, is in **[SETUP.md](SETUP.md)**.
 
 ---
 
@@ -154,5 +154,5 @@ model approval — Gate 3). Full step-by-step setup, including the exact permiss
 - **Solo demos.** GitHub does not allow a pull-request author to approve their own PR. With a second
   reviewer, Gate 1 is satisfied normally; running solo, a repository admin can merge directly. The
   automated `validate` check is always enforced either way.
-- **Full rebuild guide.** To stand this up in a fresh workspace end to end — provisioning, the
-  service-principal permission chain, and the deployment-job wiring — see **`MLOPS_DEMO_PLAYBOOK.md`**.
+- **Setup guide.** To stand this up in your own workspace — prerequisites, the service-principal
+  permission chain, the deployment-job wiring, and troubleshooting — see **[SETUP.md](SETUP.md)**.
