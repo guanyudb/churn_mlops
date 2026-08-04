@@ -40,6 +40,11 @@ principal.
 
 ---
 
+> **Note on CI status.** The `churn-ci` / `churn-cd` workflows deploy to a real Databricks
+> workspace, so they run green only once you have configured the three Actions secrets described
+> in [SETUP.md](SETUP.md) for your own workspace. A failing check on a fresh clone means no
+> workspace is configured yet, not a problem with the code.
+
 ## Repository layout
 ```
 .github/workflows/
