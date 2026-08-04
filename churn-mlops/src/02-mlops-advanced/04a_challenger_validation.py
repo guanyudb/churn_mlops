@@ -11,7 +11,6 @@
 # MAGIC *Note: In a typical mlops setup, this would run as part of an automated deployment job to validate a new model. We'll run this demo as an interactive notebook.*
 # MAGIC
 # MAGIC <!-- Collect usage data (view). Remove it to disable the collection or the tracker during installation. View README for more details.  -->
-# MAGIC <img width="1px" src="https://ppxrzfxige.execute-api.us-west-2.amazonaws.com/v1/analytics?category=data-science&org_id=984752964297111&notebook=%2F02-mlops-advanced%2F04a_challenger_validation&demo_name=mlops-end2end&event=VIEW&path=%2F_dbdemos%2Fdata-science%2Fmlops-end2end%2F02-mlops-advanced%2F04a_challenger_validation&version=1&user_hash=a8f2b0e51d1746bca1f1419247f7b28d9cd0cab0921307ada88740666c76c889">
 
 # COMMAND ----------
 

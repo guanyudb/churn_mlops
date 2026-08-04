@@ -17,7 +17,7 @@ current_user = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
 reformat_current_user = current_user.split("@")[0].lower().replace(".", "_")
 current_user_az = re.sub(r'[^A-Za-z]', '', reformat_current_user)
 
-catalog = "catalog_sbx2_4710ry"
+catalog = "<CATALOG>"  # set to your Unity Catalog (this demo cannot CREATE CATALOG on a Default-Storage metastore)
 dbutils.widgets.text("stage_db", "dbdemos_mlops", "Stage schema")
 dbName = db = dbutils.widgets.get("stage_db")
 dbutils.widgets.text("data_source_schema", "dbdemos_mlops_prod", "Shared feature/label source")

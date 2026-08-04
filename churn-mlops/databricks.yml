@@ -13,7 +13,7 @@ include:
 variables:
   catalog:
     description: UC catalog (Default-Storage sandbox metastore)
-    default: catalog_sbx2_4710ry
+    default: <CATALOG>            # e.g. your Unity Catalog name
   schema:
     description: Per-stage schema (dev/staging/prod isolation)
     default: dbdemos_mlops
@@ -21,21 +21,18 @@ variables:
     default: advanced_mlops_churn
   service_principal_app_id:
     description: CI service principal (staging/prod run_as)
-    default: "108fa171-a190-454b-a88f-7b076d812314"
+    default: "<CI_SERVICE_PRINCIPAL_APP_ID>"
 
 targets:
   dev:
     mode: development
     default: true
-    workspace:
-      host: https://adb-7405606147162120.0.azuredatabricks.net
     variables:
       schema: dbdemos_mlops
 
   staging:
     mode: production
     workspace:
-      host: https://adb-7405606147162120.0.azuredatabricks.net
       root_path: /Workspace/Shared/.bundle/churn-mlops/staging
     variables:
       schema: dbdemos_mlops_staging
@@ -45,7 +42,6 @@ targets:
   prod:
     mode: production
     workspace:
-      host: https://adb-7405606147162120.0.azuredatabricks.net
       root_path: /Workspace/Shared/.bundle/churn-mlops/prod
     variables:
       schema: dbdemos_mlops_prod
