@@ -33,25 +33,33 @@ creates the source tables when the target schema is the production one.
 
 ## 2. Point the bundle at your environment
 
-Replace the placeholders in these two files:
+**Nothing needs editing in the repository.** The catalog is a bundle variable, so supply it as
+configuration:
 
-| Placeholder | File | Value |
-|---|---|---|
-| `<CATALOG>` | `churn-mlops/databricks.yml` **and** `churn-mlops/src/_resources/00-setup.py` | your catalog |
-| `<CI_SERVICE_PRINCIPAL_APP_ID>` | `churn-mlops/databricks.yml` | the service principal's application id |
+| Where | How |
+|---|---|
+| Locally | `databricks bundle deploy -t dev --var catalog=<your_catalog>` (or `export BUNDLE_VAR_catalog=<your_catalog>`) |
+| In CI | repository **variable** `DATABRICKS_CATALOG` (Settings → Secrets and variables → Actions → **Variables**) |
 
-**Workspace URL is not in the bundle.** The Databricks CLI resolves it from the environment — the
-`DATABRICKS_HOST` secret in CI, or your CLI profile locally — so you don't hardcode a workspace and
-the project stays portable across environments.
+Every job task passes the catalog through to the notebooks, and `00-setup.py` reads it from a
+widget, so it is configured in exactly one place. Both workflows fail fast with a clear message if
+it isn't set — a bundle will otherwise deploy with the catalog unresolved and only break at run
+time.
 
-> Also search the notebooks for any fully-qualified table or function references that need your
-> catalog: `grep -rn "<CATALOG>" churn-mlops/src/`
+**Workspace URL is not in the bundle either.** The Databricks CLI resolves it from the environment —
+the `DATABRICKS_HOST` secret in CI, or your CLI profile locally — so you don't hardcode a workspace
+and the project stays portable across environments.
+
+The one placeholder that remains is `<CI_SERVICE_PRINCIPAL_APP_ID>` in `churn-mlops/databricks.yml`.
+It is declared for reference only (staging and prod `run_as` default to the deploying identity), so
+you can leave it as-is or set it to your service principal's application id.
 
 ## 3. Deploy the bundle
 
 ```bash
 cd churn-mlops
 export DATABRICKS_TF_VERSION=1.5.7
+export BUNDLE_VAR_catalog=<your_catalog>      # or pass --var catalog=<your_catalog> each time
 databricks bundle validate -t dev -p <profile>
 databricks bundle deploy   -t dev -p <profile>
 databricks bundle deploy   -t staging -p <profile>
@@ -123,11 +131,15 @@ Confirm the link with
 
 ## 6. GitHub configuration
 
-1. **Actions secrets** (`Settings → Secrets and variables → Actions`):
+1. **Actions secrets** (`Settings → Secrets and variables → Actions → Secrets`):
    ```
    DATABRICKS_HOST            = <workspace url>
    DATABRICKS_CLIENT_ID       = <service principal application id>
    DATABRICKS_CLIENT_SECRET   = <service principal OAuth secret>
+   ```
+   and one **variable** (`… → Actions → Variables`) — not a secret, it isn't sensitive:
+   ```
+   DATABRICKS_CATALOG         = <your catalog>
    ```
 2. **Branch protection on `main`** (Gate 1): require a pull request with **1 approving review**, and
    require the **`validate`** status check.

@@ -11,6 +11,7 @@ resources:
           notebook_task:
             notebook_path: ../src/02-mlops-advanced/01_feature_engineering.py
             base_parameters:
+              catalog: ${var.catalog}
               stage_db: ${var.schema}
 
     churn_training:
@@ -20,6 +21,7 @@ resources:
           notebook_task:
             notebook_path: ../src/02-mlops-advanced/02_model_training_hpo_optuna.py
             base_parameters:
+              catalog: ${var.catalog}
               stage_db: ${var.schema}
         # Register the best run to Unity Catalog as a new @Challenger version.
         # (02 only logs to MLflow tracking; 03b is what creates the UC model
@@ -30,6 +32,7 @@ resources:
           notebook_task:
             notebook_path: ../src/02-mlops-advanced/03b_from_notebook_to_models_in_uc.py
             base_parameters:
+              catalog: ${var.catalog}
               stage_db: ${var.schema}
 
     churn_batch_inference:
@@ -39,4 +42,5 @@ resources:
           notebook_task:
             notebook_path: ../src/02-mlops-advanced/05_batch_inference.py
             base_parameters:
+              catalog: ${var.catalog}
               stage_db: ${var.schema}

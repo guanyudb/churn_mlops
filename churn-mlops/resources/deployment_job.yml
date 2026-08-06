@@ -24,6 +24,7 @@ resources:
               # Pass the stage schema so 00-setup resolves db to the prod schema
               # that owns the shared feature/label tables (otherwise 00-setup
               # defaults to "dbdemos_mlops" and unqualified table refs 404).
+              catalog: ${var.catalog}
               stage_db: ${var.schema}
         - task_key: Approval_Check
           depends_on:
@@ -33,6 +34,7 @@ resources:
             notebook_path: ../src/02-mlops-advanced/04b_challenger_approval.py
             base_parameters:
               approval_tag_name: "Approval_Check"
+              catalog: ${var.catalog}
               stage_db: ${var.schema}
         - task_key: Deployment
           depends_on:
@@ -42,4 +44,5 @@ resources:
             notebook_path: ../src/02-mlops-advanced/06_serve_features_and_model.py
             base_parameters:
               smoke_test: "false"
+              catalog: ${var.catalog}
               stage_db: ${var.schema}

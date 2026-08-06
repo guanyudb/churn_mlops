@@ -17,7 +17,20 @@ current_user = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
 reformat_current_user = current_user.split("@")[0].lower().replace(".", "_")
 current_user_az = re.sub(r'[^A-Za-z]', '', reformat_current_user)
 
-catalog = "<CATALOG>"  # set to your Unity Catalog (this demo cannot CREATE CATALOG on a Default-Storage metastore)
+# Unity Catalog to use. Supplied by the bundle (every job task passes
+# catalog=${var.catalog}), so it is configured in one place: the `catalog` bundle
+# variable — set it in databricks.yml, with `--var catalog=...`, or via the
+# BUNDLE_VAR_catalog environment variable in CI. Running a notebook interactively
+# outside a job? Type your catalog into the widget.
+dbutils.widgets.text("catalog", "<CATALOG>", "Unity Catalog")
+catalog = dbutils.widgets.get("catalog")
+if not catalog or catalog.startswith("<"):
+    raise ValueError(
+        "No Unity Catalog configured. Set the `catalog` bundle variable "
+        "(databricks.yml / --var catalog=... / BUNDLE_VAR_catalog), or enter one "
+        "in the notebook's `catalog` widget. This demo cannot CREATE CATALOG on a "
+        "Default-Storage metastore, so use an existing catalog."
+    )
 dbutils.widgets.text("stage_db", "dbdemos_mlops", "Stage schema")
 dbName = db = dbutils.widgets.get("stage_db")
 dbutils.widgets.text("data_source_schema", "dbdemos_mlops_prod", "Shared feature/label source")
